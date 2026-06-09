@@ -121,4 +121,7 @@ internal static class HidNative
     public const uint FILE_SHARE_WRITE = 0x02;
     public const uint OPEN_EXISTING = 3;
     public const uint FILE_ATTRIBUTE_NORMAL = 0x80;
+
+    // HIDP status codes
+    public const int HIDP_STATUS_SUCCESS = 0x00110000;
 }

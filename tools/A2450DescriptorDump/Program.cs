@@ -107,11 +107,22 @@ internal static class Program
                 else if (path.Contains("MI_01", StringComparison.OrdinalIgnoreCase)) label = "MI_01";
 
                 // Open device and get caps
+                // Try GENERIC_READ first; if the device is occupied by kbdhid,
+                // fall back to desiredAccess=0 which still allows HidD_GetPreparsedData.
                 var hDevice = HidNative.CreateFile(path,
                     HidNative.GENERIC_READ,
                     HidNative.FILE_SHARE_READ | HidNative.FILE_SHARE_WRITE,
                     IntPtr.Zero, HidNative.OPEN_EXISTING,
                     HidNative.FILE_ATTRIBUTE_NORMAL, IntPtr.Zero);
+
+                if (hDevice == IntPtr.Zero || hDevice == new IntPtr(-1))
+                {
+                    hDevice = HidNative.CreateFile(path,
+                        0,
+                        HidNative.FILE_SHARE_READ | HidNative.FILE_SHARE_WRITE,
+                        IntPtr.Zero, HidNative.OPEN_EXISTING,
+                        HidNative.FILE_ATTRIBUTE_NORMAL, IntPtr.Zero);
+                }
 
                 if (hDevice == IntPtr.Zero || hDevice == new IntPtr(-1))
                     continue;
@@ -125,7 +136,7 @@ internal static class Program
                     {
                         try
                         {
-                            if (HidNative.HidP_GetCaps(ppd, out var caps) == 0) // HIDP_STATUS_SUCCESS
+                            if (HidNative.HidP_GetCaps(ppd, out var caps) == HidNative.HIDP_STATUS_SUCCESS)
                             {
                                 yield return new HidCollectionEntry
                                 {
