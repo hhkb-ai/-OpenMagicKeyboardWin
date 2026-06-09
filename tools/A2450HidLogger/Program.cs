@@ -6,11 +6,18 @@ namespace A2450HidLogger;
 internal static class Program
 {
     [STAThread]
-    private static void Main()
+    private static void Main(string[] args)
     {
+        if (args.Any(arg => string.Equals(arg, "--simulate", StringComparison.OrdinalIgnoreCase)))
+        {
+            SimulatedRun.WriteLogs();
+            return;
+        }
+
         if (!OperatingSystem.IsWindows())
         {
-            Console.Error.WriteLine("A2450HidLogger only runs on Windows.");
+            Console.Error.WriteLine("A2450HidLogger only runs on Windows unless --simulate is used.");
+            Console.Error.WriteLine("Try: dotnet run --project ./tools/A2450HidLogger/A2450HidLogger.csproj -- --simulate");
             return;
         }
 
