@@ -1,0 +1,21 @@
+name: dotnet-build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Build shared and tools
+        run: |
+          dotnet build src/OpenMagicKeyboard.Shared/OpenMagicKeyboard.Shared.csproj -c Release
+          dotnet build tools/A2450HidLogger/A2450HidLogger.csproj -c Release
+          dotnet build src/OpenMagicKeyboard.App/OpenMagicKeyboard.App.csproj -c Release
