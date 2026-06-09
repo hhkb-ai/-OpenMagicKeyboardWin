@@ -19,7 +19,9 @@
 | C#/C parity check | ✅ |
 
 **Remaining for MVP-A completion:**
-- [ ] Compile .sys with WDK (not installed)
+- [ ] Install WDK / WDK VSIX
+- [ ] Re-run WDK build
+- [ ] Confirm .sys generation
 - [ ] Code review of Filter.c completion routine
 - [ ] Verify .sys loads in a test VM (future phase)
 

@@ -62,6 +62,16 @@ Build（只编译，不安装）
 
 **此 .sys 文件不得在任何机器上安装。**
 
+## Current WDK Build Status
+
+The project file is recognized by MSBuild, but build currently fails on machines without WDK:
+
+```text
+MSB8020: WindowsKernelModeDriver10.0 build tools not found.
+```
+
+Install WDK before attempting to build. Do not install or deploy the driver.
+
 ## 相关文档
 
 - `docs/a2450-usb-hid-report-structure.md` — HID Report 结构

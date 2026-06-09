@@ -44,6 +44,23 @@ These actions are safe and expected during development:
 | Running ConsumerControlProbe | Read-only device enumeration |
 | Static code review | Reading source files |
 
+## WDK Build Attempt Result
+
+Attempted build on 2026-06-09:
+
+```text
+error MSB8020: The build tools for WindowsKernelModeDriver10.0 cannot be found.
+```
+
+Interpretation:
+
+- MSBuild recognized the driver project and attempted compilation.
+- The machine has Windows SDK 10.0.22621.0 installed.
+- The machine does **not** have WDK (Windows Driver Kit) build tools installed.
+- This is an environment/toolchain issue, not evidence that the vcxproj structure is invalid.
+- To build `.sys`, install the Windows Driver Kit and the WDK Visual Studio extension.
+- Do **not** install or deploy the driver after building.
+
 ## Future Test Requirements
 
 Before the driver can be installed (in a future phase), ALL of the following must be in place:
