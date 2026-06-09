@@ -1,0 +1,79 @@
+; ========================================================================
+; DO NOT INSTALL.
+; This is a design template only.
+; Do not use pnputil.
+; Do not bind this to real hardware yet.
+; Do not run on production machines.
+; ========================================================================
+;
+; OpenMagicKeyboardA2450Filter — INF Template
+;
+; This file documents the intended INF structure for the A2450 HID filter
+; driver. It is NOT a working installer.
+;
+; Before this can be used:
+;   1. The .sys must be properly signed (EV code signing + Microsoft portal)
+;   2. Test signing must be enabled (development only)
+;   3. A recovery plan must be in place (see docs/driver-build-and-test-safety.md)
+;   4. A spare keyboard must be available in case of failure
+;
+; Target device: Apple Magic Keyboard A2450
+;   USB: VID_05AC&PID_029C&MI_01
+;   Bluetooth: BTHENUM\{00001124-...}_VID&0001004C_PID&029C
+;
+; Driver stack position:
+;   kbdhid.sys (HID keyboard miniport)
+;       ↓
+;   OpenMagicKeyboardA2450Filter.sys  ← this filter
+;       ↓
+;   hidusb.sys (HID USB miniport)
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=HIDClass
+ClassGuid={745a17a0-74d3-11d0-b6fe-00a0c90f57da}
+Provider=%ManufacturerName%
+DriverVer=06/09/2026,0.0.1.0
+CatalogFile=OpenMagicKeyboardA2450Filter.cat
+PnpLockdown=1
+
+[Manufacturer]
+%ManufacturerName%=Standard,NTamd64
+
+[Standard.NTamd64]
+; USB mode: A2450 with MI_01 (keyboard interface)
+%DeviceName%=Install, USB\VID_05AC&PID_029C&MI_01
+; Bluetooth mode (placeholder — needs real hardware ID)
+; %DeviceName%=Install, BTHENUM\{00001124-0000-1000-8000-00805f9b34fb}_VID&0001004C_PID&029C
+
+[Install.NT]
+Include=input.inf
+Needs=HID_Inst.NT
+
+[Install.NT.HW]
+AddReg=Filter_AddReg
+
+[Filter_AddReg]
+; This registers our driver as a lower filter for the HID device.
+; The driver will sit below kbdhid.sys and above hidusb.sys.
+HKR,,LowerFilters,0x00010008,"OpenMagicKeyboardA2450Filter"
+
+[Install.NT.Services]
+Include=input.inf
+Needs=HID_Inst.NT.Services
+AddService=OpenMagicKeyboardA2450Filter,,Filter_Service_Inst
+
+[Filter_Service_Inst]
+DisplayName=%ServiceName%
+ServiceType=1          ; SERVICE_KERNEL_DRIVER
+StartType=3            ; SERVICE_DEMAND_START (loaded when needed)
+ErrorControl=1         ; SERVICE_ERROR_NORMAL
+ServiceBinary=%12%\OpenMagicKeyboardA2450Filter.sys
+
+[DestinationDirs]
+DefaultDestDir=12      ; %windir%\system32\drivers
+
+[Strings]
+ManufacturerName="OpenMagicKeyboardWin"
+DeviceName="Apple Magic Keyboard A2450 Fn/Ctrl Filter"
+ServiceName="OpenMagicKeyboardA2450Filter"

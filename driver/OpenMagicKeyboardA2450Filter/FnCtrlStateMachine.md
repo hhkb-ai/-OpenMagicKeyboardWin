@@ -123,7 +123,8 @@ uint8_t remapFnLayerKey(uint8_t usage) {
 - **COL02** = Consumer Control, UsagePage 0x000C, Usage 0x0001, InputReportByteLength 2
 - **COL03** = Vendor Defined (0xFF00), 不是 Consumer Control
 
-媒体键应通过 COL02 的 Consumer Control 通道输出，不能塞进 COL01 的 10 字节键盘 Report。
+媒体键应通过驱动层合成 Consumer Control Input Report（COL02 通道），不能塞进 COL01 的 10 字节键盘 Report。
+不要向物理 COL02 设备写入 Output Report。未来实现方式：驱动层拦截并合成，或虚拟 HID 设备。
 
 | 物理键 | Key Usage | Consumer Usage | Consumer Code |
 |--------|-----------|---------------|---------------|

@@ -325,7 +325,7 @@ uint8_t remapFnLayerKey(uint8_t usage) {
 
 | 方案 | 可行性 | 说明 |
 |------|--------|------|
-| 通过 COL02 发送 Consumer Report | ✅ 可行 | COL02 = UsagePage 0x0C, 2 字节输入 |
+| 驱动层合成 Consumer Control Input Report | ✅ 可行 | COL02 = UsagePage 0x0C, 2 字节输入；不要向物理 COL02 写入 Output Report |
 | 模拟 Consumer Control 设备 | ❌ 过于复杂 | 需要虚拟 HID 设备驱动 |
 
 ### MVP-B 媒体键计划

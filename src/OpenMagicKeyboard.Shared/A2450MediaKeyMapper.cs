@@ -2,7 +2,8 @@ namespace OpenMagicKeyboard.Shared;
 
 /// <summary>
 /// HID Consumer Control Usage codes (Usage Page 0x0C).
-/// These are sent via the COL02 interface, not COL01.
+/// These should be synthesized as Consumer Control Input Reports (not Output Reports).
+/// COL02 is the Consumer Control Input Report channel (UsagePage 0x000C).
 /// </summary>
 public enum A2450ConsumerUsage : ushort
 {
@@ -21,8 +22,8 @@ public enum A2450ConsumerUsage : ushort
 /// Trigger condition: Physical Left Ctrl (FnLayer active) + F7~F12.
 /// NOT Physical Fn + F7~F12, because Fn is mapped to Left Ctrl, not FnLayer.
 ///
-/// Consumer Control reports are sent via COL02 (UsagePage 0x000C),
-/// not via the COL01 keyboard report.
+/// Consumer Control reports are synthesized as Input Reports for COL02 (UsagePage 0x000C),
+/// not via the COL01 keyboard report. Do not write Output Reports to the physical COL02 device.
 /// </summary>
 public static class A2450MediaKeyMapper
 {
