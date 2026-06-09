@@ -1,0 +1,41 @@
+# Build outputs
+bin/
+obj/
+out/
+build/
+x64/
+x86/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs and local reports
+logs/
+*.etl
+*.dmp
+*.pdb
+
+# Visual Studio
+.vs/
+
+# Rider
+.idea/
+
+# Windows driver build outputs
+*.sys
+*.cat
+*.inf_loc
+*.vcxproj.user
+*.vcxproj.filters
+*.recipe
+*.tlog
+
+# NuGet
+*.nupkg
+packages/
+
+# Local secrets
+.env
+*.pfx
+*.snk
