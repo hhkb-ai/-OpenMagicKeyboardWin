@@ -1,0 +1,18 @@
+<Window x:Class="OpenMagicKeyboard.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="OpenMagicKeyboardWin" Height="360" Width="640">
+    <Grid Margin="24">
+        <StackPanel>
+            <TextBlock FontSize="22" FontWeight="SemiBold" Text="OpenMagicKeyboardWin" />
+            <TextBlock Margin="0,12,0,0" TextWrapping="Wrap"
+                       Text="Tray app placeholder. The first active development target is A2450HidLogger. Driver and battery settings will be added after HID reports are validated." />
+            <GroupBox Header="A2450 Target" Margin="0,24,0,0" Padding="12">
+                <StackPanel>
+                    <TextBlock Text="Core goal: Fn → Left Ctrl, Left Ctrl → internal FnLayer." />
+                    <TextBlock Margin="0,8,0,0" Text="Status: design scaffold only." />
+                </StackPanel>
+            </GroupBox>
+        </StackPanel>
+    </Grid>
+</Window>
