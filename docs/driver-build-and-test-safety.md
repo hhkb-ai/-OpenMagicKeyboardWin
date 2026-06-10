@@ -2,9 +2,9 @@
 
 ## Current Stage
 
-**Build scaffold only. No installation.**
+**.sys generated (unsigned). No installation.**
 
-The driver source code and WDK project file exist as a design artifact. The `.sys` file produced by building is NOT meant to be loaded on any system.
+The driver compiles successfully with WDK 10.0.26100. The `.sys` file is a build artifact — it is NOT meant to be loaded on any system.
 
 ## Build Is Not Installation
 
@@ -44,22 +44,41 @@ These actions are safe and expected during development:
 | Running ConsumerControlProbe | Read-only device enumeration |
 | Static code review | Reading source files |
 
-## WDK Build Attempt Result
+## WDK Build Environment
 
-Attempted build on 2026-06-09:
+### Required Software
 
-```text
-error MSB8020: The build tools for WindowsKernelModeDriver10.0 cannot be found.
+| Component | Version | Install Command |
+|-----------|---------|-----------------|
+| Visual Studio 2022 Community | 17.x | Manual install |
+| C++ Desktop workload | — | VS Installer → Workloads |
+| Windows SDK | 10.0.26100.0 | `winget install Microsoft.WindowsSDK.10.0.26100` |
+| Windows WDK | 10.0.26100 | `winget install Microsoft.WindowsWDK.10.0.26100` |
+
+### Platform Toolset Registration
+
+The WDK 10.0.26100 standalone installer does NOT register the `WindowsKernelModeDriver10.0` platform toolset in VS 2022. The bundled WDK.vsix (22621) is rejected by VS 17.11 as too old.
+
+**Manual fix:** Create these two files in the VS 2022 PlatformToolsets directory (requires admin):
+
+```
+C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Platforms\x64\PlatformToolsets\WindowsKernelModeDriver10.0\Toolset.props
+C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Platforms\x64\PlatformToolsets\WindowsKernelModeDriver10.0\Toolset.targets
 ```
 
-Interpretation:
+See the Toolset.props and Toolset.targets files in the project's `driver/platform-toolset/` directory for the content.
 
-- MSBuild recognized the driver project and attempted compilation.
-- The machine has Windows SDK 10.0.22621.0 installed.
-- The machine does **not** have WDK (Windows Driver Kit) build tools installed.
-- This is an environment/toolchain issue, not evidence that the vcxproj structure is invalid.
-- To build `.sys`, install the Windows Driver Kit and the WDK Visual Studio extension.
-- Do **not** install or deploy the driver after building.
+### Build Result (2026-06-10)
+
+```text
+已成功生成。
+    0 个警告
+    0 个错误
+    已用时间 00:00:01.13
+```
+
+- Debug x64: `bin\Debug\x64\OpenMagicKeyboardA2450Filter.sys` (10 KB)
+- Release x64: `bin\Release\x64\OpenMagicKeyboardA2450Filter.sys` (9 KB)
 
 ## Future Test Requirements
 

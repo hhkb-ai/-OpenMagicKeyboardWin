@@ -2,7 +2,7 @@
 
 ## MVP-A — Keyboard Transform (Current)
 
-**Status: Build scaffold ready**
+**Status: .sys generated (unsigned, not installed)**
 
 | Feature | Status |
 |---------|--------|
@@ -15,13 +15,12 @@
 | FnLayer + → → End | ✅ C# + C driver |
 | C# unit tests (37/37) | ✅ |
 | WDK/KMDF build scaffold | ✅ |
+| WDK build (Debug + Release) | ✅ 0 warnings, 0 errors |
+| .sys generation | ✅ Debug 10 KB, Release 9 KB |
 | INF template | ✅ (design only) |
 | C#/C parity check | ✅ |
 
 **Remaining for MVP-A completion:**
-- [ ] Install WDK / WDK VSIX
-- [ ] Re-run WDK build
-- [ ] Confirm .sys generation
 - [ ] Code review of Filter.c completion routine
 - [ ] Verify .sys loads in a test VM (future phase)
 

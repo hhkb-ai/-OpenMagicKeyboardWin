@@ -4,7 +4,7 @@ Apple Magic Keyboard A2450 的 HID Filter Driver。
 
 ## 当前状态
 
-**MVP-A Build Scaffold**。驱动源码和 WDK 项目骨架已就绪，可尝试在 Visual Studio + WDK 环境中编译。**不可安装，不可绑定真实设备。**
+**MVP-A .sys 已生成**。WDK 编译通过（Debug + Release，0 警告 0 错误），产物为未签名 .sys。**不可安装，不可绑定真实设备。**
 
 ## HID Collection 总览（真实设备验证）
 
@@ -46,31 +46,33 @@ Apple Magic Keyboard A2450 的 HID Filter Driver。
 
 ## 构建要求
 
-- Visual Studio 2022（C++ 工作负载）
-- Windows Driver Kit (WDK) for Windows 11
-- KMDF 1.15+
+- Visual Studio 2022 Community 17.x（C++ Desktop 工作负载）
+- Windows SDK 10.0.26100.0（`winget install Microsoft.WindowsSDK.10.0.26100`）
+- Windows WDK 10.0.26100（`winget install Microsoft.WindowsWDK.10.0.26100`）
+- 手动注册平台工具集（WDK.vsix 版本过旧，不兼容 VS 17.11）
+- KMDF 1.15
+
+详见 `docs/driver-build-and-test-safety.md`。
 
 ## 构建方式
 
-```
-打开 OpenMagicKeyboardA2450Filter.vcxproj
-选择 Release | x64
-Build（只编译，不安装）
+```powershell
+cd driver\OpenMagicKeyboardA2450Filter
+msbuild OpenMagicKeyboardA2450Filter.vcxproj /p:Configuration=Debug /p:Platform=x64
 ```
 
-编译产物：`OpenMagicKeyboardA2450Filter.sys`
+编译产物：
+- `bin\Debug\x64\OpenMagicKeyboardA2450Filter.sys`（~10 KB）
+- `bin\Debug\x64\OpenMagicKeyboardA2450Filter.pdb`（~492 KB）
 
 **此 .sys 文件不得在任何机器上安装。**
 
-## Current WDK Build Status
+## WDK Build Status
 
-The project file is recognized by MSBuild, but build currently fails on machines without WDK:
-
-```text
-MSB8020: WindowsKernelModeDriver10.0 build tools not found.
-```
-
-Install WDK before attempting to build. Do not install or deploy the driver.
+| 配置 | 结果 | 警告 | 错误 |
+|------|------|------|------|
+| Debug x64 | ✅ .sys 生成 | 0 | 0 |
+| Release x64 | ✅ .sys 生成 | 0 | 0 |
 
 ## 相关文档
 

@@ -1,0 +1,54 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <IsKernelModeToolset>true</IsKernelModeToolset>
+    <WDKContentRoot Condition="'$(WDKContentRoot)' == ''">C:\Program Files (x86)\Windows Kits\10\</WDKContentRoot>
+    <WDKBuildFolder Condition="'$(WDKBuildFolder)' == ''">10.0.26100.0</WDKBuildFolder>
+    <WindowsSDKVersionedBinRoot Condition="'$(WindowsSDKVersionedBinRoot)' == ''">$(WDKContentRoot)bin\$(WDKBuildFolder)</WindowsSDKVersionedBinRoot>
+    <WindowsSdkDir Condition="'$(WindowsSdkDir)' == ''">$(WDKContentRoot)</WindowsSdkDir>
+    <PlatformToolsetVersion>17.0</PlatformToolsetVersion>
+    <VCInstallDir Condition="'$(VCInstallDir)' == ''">C:\Program Files\Microsoft Visual Studio\2022\Community\VC\</VCInstallDir>
+    <VCToolsInstallDir Condition="'$(VCToolsInstallDir)' == ''">$(VCInstallDir)Tools\MSVC\14.41.34120\</VCToolsInstallDir>
+    <WindowsSDKDir Condition="'$(WindowsSDKDir)' == ''">$(WDKContentRoot)</WindowsSDKDir>
+    <KernelBufferOverflowLib>$(WDKContentRoot)Lib\$(WDKBuildFolder)\km\x64\BufferOverflowK.lib</KernelBufferOverflowLib>
+    <_PlatformFolder Condition="'$(_PlatformFolder)' == ''">$(VCTargetsPath)\Platforms\x64\</_PlatformFolder>
+    <TargetVersion Condition="'$(TargetVersion)' == ''">Windows10</TargetVersion>
+    <TargetPlatformVersion Condition="'$(TargetPlatformVersion)' == ''">10.0.26100.0</TargetPlatformVersion>
+    <LatestWdkPlatformVersion>10.0.26100.0</LatestWdkPlatformVersion>
+    <_NT_TARGET_VERSION_WIN11_GE>0xA000010</_NT_TARGET_VERSION_WIN11_GE>
+    <_NT_TARGET_VERSION_WIN10_NI>0xA00000C</_NT_TARGET_VERSION_WIN10_NI>
+    <_NT_TARGET_VERSION_WIN10_CO>0xA00000B</_NT_TARGET_VERSION_WIN10_CO>
+    <_NT_TARGET_VERSION_WIN10_FE>0xA00000A</_NT_TARGET_VERSION_WIN10_FE>
+    <_NT_TARGET_VERSION_WIN10_MN>0xA000009</_NT_TARGET_VERSION_WIN10_MN>
+    <_NT_TARGET_VERSION_WIN10_VB>0xA000008</_NT_TARGET_VERSION_WIN10_VB>
+    <_NT_TARGET_VERSION_WIN10_19H1>0xA000007</_NT_TARGET_VERSION_WIN10_19H1>
+    <_NT_TARGET_VERSION_WIN10_RS5>0xA000006</_NT_TARGET_VERSION_WIN10_RS5>
+    <_NT_TARGET_VERSION_WIN10_RS4>0xA000005</_NT_TARGET_VERSION_WIN10_RS4>
+    <_NT_TARGET_VERSION_WIN10_RS3>0xA000004</_NT_TARGET_VERSION_WIN10_RS3>
+    <_NT_TARGET_VERSION_WIN10_RS2>0xA000003</_NT_TARGET_VERSION_WIN10_RS2>
+    <_NT_TARGET_VERSION_WIN10_RS1>0xA000002</_NT_TARGET_VERSION_WIN10_RS1>
+    <_NT_TARGET_VERSION_WIN10_TH2>0xA000001</_NT_TARGET_VERSION_WIN10_TH2>
+    <_NT_TARGET_VERSION_WIN10>0x0A00</_NT_TARGET_VERSION_WIN10>
+    <_NT_TARGET_VERSION_WINV63>0x0603</_NT_TARGET_VERSION_WINV63>
+    <_NT_TARGET_VERSION_WIN8>0x0602</_NT_TARGET_VERSION_WIN8>
+    <_NT_TARGET_VERSION_WIN7>0x0601</_NT_TARGET_VERSION_WIN7>
+    <_NT_TARGET_VERSION_LATEST>0xA000010</_NT_TARGET_VERSION_LATEST>
+    <Valid_NTTARGETVERSIONS>$(_NT_TARGET_VERSION_WIN11_GE);$(_NT_TARGET_VERSION_WIN10_NI);$(_NT_TARGET_VERSION_WIN10_CO);$(_NT_TARGET_VERSION_WIN10_FE);$(_NT_TARGET_VERSION_WIN10_MN);$(_NT_TARGET_VERSION_WIN10_VB);$(_NT_TARGET_VERSION_WIN10_19H1);$(_NT_TARGET_VERSION_WIN10_RS5);$(_NT_TARGET_VERSION_WIN10_RS4);$(_NT_TARGET_VERSION_WIN10_RS3);$(_NT_TARGET_VERSION_WIN10_RS2);$(_NT_TARGET_VERSION_WIN10_RS1);$(_NT_TARGET_VERSION_WIN10_TH2);$(_NT_TARGET_VERSION_WIN10);$(_NT_TARGET_VERSION_WINV63);$(_NT_TARGET_VERSION_WIN8);$(_NT_TARGET_VERSION_WIN7)</Valid_NTTARGETVERSIONS>
+    <_NT_TARGET_VERSION Condition="'$(_NT_TARGET_VERSION)' == ''">$(_NT_TARGET_VERSION_WIN11_GE)</_NT_TARGET_VERSION>
+    <DriverTargetPlatform Condition="'$(DriverTargetPlatform)' == ''">Desktop</DriverTargetPlatform>
+    <MatchingSdkPresent>true</MatchingSdkPresent>
+    <MatchingWdkPresent>true</MatchingWdkPresent>
+    <TargetExt Condition="'$(ConfigurationType)' == 'Driver'">.sys</TargetExt>
+    <OutputType Condition="'$(ConfigurationType)' == 'Driver'">sys</OutputType>
+    <LinkCompiled Condition="'$(ConfigurationType)' == 'Driver'">true</LinkCompiled>
+    <IsDriver Condition="'$(ConfigurationType)' == 'Driver'">true</IsDriver>
+    <EnableTestSign Condition="'$(ConfigurationType)' == 'Driver'">true</EnableTestSign>
+    <DDK_LIB_PATH>$(WDKContentRoot)Lib\$(WDKBuildFolder)\km\x64\</DDK_LIB_PATH>
+    <KM_IncludePath>$(WDKContentRoot)Include\$(WDKBuildFolder)\km</KM_IncludePath>
+    <KIT_SHARED_IncludePath>$(WDKContentRoot)Include\$(WDKBuildFolder)\shared</KIT_SHARED_IncludePath>
+    <CRT_IncludePath>$(VCToolsInstallDir)include</CRT_IncludePath>
+    <IncludePath>$(CRT_IncludePath);$(KM_IncludePath);$(KIT_SHARED_IncludePath);$(IncludePath)</IncludePath>
+    <LibraryPath>$(DDK_LIB_PATH);$(VCToolsInstallDir)lib\x64;$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.MSVC.Toolset.x64.props" Condition="Exists('$(VCTargetsPath)\Microsoft.Cpp.MSVC.Toolset.x64.props')" />
+  <Import Project="$(WDKContentRoot)build\$(WDKBuildFolder)\WindowsDriver.Default.props" Condition="Exists('$(WDKContentRoot)build\$(WDKBuildFolder)\WindowsDriver.Default.props')" />
+</Project>

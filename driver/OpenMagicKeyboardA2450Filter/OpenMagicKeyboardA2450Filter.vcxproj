@@ -1,24 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  OpenMagicKeyboardA2450Filter — WDK/KMDF build project.
+  OpenMagicKeyboardA2450Filter — WDK/KMDF filter driver project.
 
   DESIGN / BUILD SKELETON ONLY.
-  Do not install.
-  Do not bind to real hardware.
-  Do not run on production machines.
-
-  This project file is an initial WDK build scaffold and may need
-  adjustment for the installed WDK version.
+  Do not install.  Do not bind to real hardware.  Do not run on production machines.
 
   Requirements:
-    - Visual Studio 2022 with C++ workload
-    - Windows Driver Kit (WDK) for Windows 11
-    - KMDF 1.15 or later
+    - Visual Studio 2022 Community 17.x with C++ Desktop workload
+    - Windows SDK 10.0.26100.0  (winget install Microsoft.WindowsSDK.10.0.26100)
+    - Windows WDK 10.0.26100    (winget install Microsoft.WindowsWDK.10.0.26100)
+    - Manual platform-toolset registration (WDK.vsix is too old for VS 17.11):
+        VS 2022 PlatformToolsets\WindowsKernelModeDriver10.0\Toolset.props
+        VS 2022 PlatformToolsets\WindowsKernelModeDriver10.0\Toolset.targets
+      See docs/driver-build-and-test-safety.md for setup instructions.
 
-  Build produces: OpenMagicKeyboardA2450Filter.sys
+  Build produces: bin\Debug\x64\OpenMagicKeyboardA2450Filter.sys (unsigned)
   This .sys file MUST NOT be installed on any machine.
 -->
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- ── Configurations ────────────────────────────────────────────── -->
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
       <Configuration>Debug</Configuration>
@@ -30,79 +31,160 @@
     </ProjectConfiguration>
   </ItemGroup>
 
+  <!-- ── Global properties ─────────────────────────────────────────── -->
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <ProjectGuid>{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}</ProjectGuid>
     <RootNamespace>OpenMagicKeyboardA2450Filter</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformMinVersion>10.0.19041.0</WindowsTargetPlatformMinVersion>
     <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <TargetVersion>Windows10</TargetVersion>
     <ConfigurationType>Driver</ConfigurationType>
     <DriverType>KMDF</DriverType>
     <KMDF_VERSION_MAJOR>1</KMDF_VERSION_MAJOR>
     <KMDF_VERSION_MINOR>15</KMDF_VERSION_MINOR>
+    <!--
+      MinimalCoreWin=None prevents Microsoft.Cpp.CoreWin.props from injecting
+      user-mode libraries (kernel32.lib etc.) into CoreLibraryDependencies.
+      CoreLibraryDependencies is then cleared after Cpp.props import (see below).
+    -->
+    <MinimalCoreWin>None</MinimalCoreWin>
+    <CoreLibraryDependencies>ntoskrnl.lib</CoreLibraryDependencies>
+    <!-- Signing disabled — this is a development skeleton. -->
+    <EnableTestSign>false</EnableTestSign>
+    <SignMode>Off</SignMode>
   </PropertyGroup>
 
+  <!-- ── Per-configuration properties ──────────────────────────────── -->
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
     <TargetName>OpenMagicKeyboardA2450Filter</TargetName>
+    <TargetExt>.sys</TargetExt>
     <DebuggerFlavor>DbgengRemoteDebugger</DebuggerFlavor>
+    <GenerateManifest>false</GenerateManifest>
+    <EmbedManifest>false</EmbedManifest>
+    <DefaultLibraries></DefaultLibraries>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
     <TargetName>OpenMagicKeyboardA2450Filter</TargetName>
+    <TargetExt>.sys</TargetExt>
     <DebuggerFlavor>DbgengRemoteDebugger</DebuggerFlavor>
+    <GenerateManifest>false</GenerateManifest>
+    <EmbedManifest>false</EmbedManifest>
+    <DefaultLibraries></DefaultLibraries>
   </PropertyGroup>
 
+  <!-- ── WDK / MSVC props chain ────────────────────────────────────── -->
+  <!--
+    Import order:
+      1. Microsoft.Cpp.Default.props  — resolves ConfigurationType, sets MSVC defaults
+      2. Microsoft.Cpp.props          — loads MSVC toolchain, imports CoreWin.props
+      3. WindowsDriver.KernelMode.props — sets /kernel, Subsystem=Native, TargetExt=.sys
+         (internally imports WindowsDriver.KernelMode.KMDF.props — do NOT import again)
+      4. Clear CoreLibraryDependencies AFTER Cpp.props sets it
+  -->
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="$(WDKContentRoot)build\$(WDKBuildFolder)\WindowsDriver.KernelMode.props"
+          Condition="Exists('$(WDKContentRoot)build\$(WDKBuildFolder)\WindowsDriver.KernelMode.props')" />
+  <PropertyGroup>
+    <CoreLibraryDependencies></CoreLibraryDependencies>
+  </PropertyGroup>
 
+  <!-- ── OutDir / IntDir ───────────────────────────────────────────── -->
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
     <OutDir>$(SolutionDir)bin\$(Configuration)\$(Platform)\</OutDir>
     <IntDir>$(Configuration)\$(Platform)\</IntDir>
   </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <OutDir>$(SolutionDir)bin\$(Configuration)\$(Platform)\</OutDir>
     <IntDir>$(Configuration)\$(Platform)\</IntDir>
   </PropertyGroup>
 
+  <!-- ── Compiler & Linker settings (Debug) ───────────────────────── -->
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;DBG=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;DBG=1;_AMD64_;AMD64;NT_INST;WINNT=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <KernelBaseAddress>true</KernelBaseAddress>
-      <ExceptionHandling>
-      </ExceptionHandling>
+      <ExceptionHandling></ExceptionHandling>
+      <ProgramDataBaseFileName>$(IntDir)$(TargetName).pdb</ProgramDataBaseFileName>
+      <ObjectFileName>$(IntDir)%(FileName).obj</ObjectFileName>
+      <CallingConvention>StdCall</CallingConvention>
+      <CompileAs>CompileAsC</CompileAs>
+      <!-- /utf-8 for source files with non-ASCII comments; /GF enables /cbstring -->
+      <AdditionalOptions>/utf-8 /GF %(AdditionalOptions)</AdditionalOptions>
+      <DisableSpecificWarnings>4324;4100;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>
+        $(WDKContentRoot)Include\$(WDKBuildFolder)\km;
+        $(WDKContentRoot)Include\$(WDKBuildFolder)\shared;
+        $(WDKContentRoot)Include\wdf\kmdf\$(KMDF_VERSION_MAJOR).$(KMDF_VERSION_MINOR);
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>%(AdditionalDependencies);wdmsec.lib;wdfldr.lib</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetName).sys</OutputFile>
+      <AdditionalDependencies>ntoskrnl.lib;hal.lib;wmilib.lib;wdmsec.lib;wdfldr.lib;wdfdriverentry.lib;$(KernelBufferOverflowLib)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+        $(WDKContentRoot)Lib\$(WDKBuildFolder)\km\x64;
+        $(WDKContentRoot)Lib\wdf\kmdf\x64\$(KMDF_VERSION_MAJOR).$(KMDF_VERSION_MINOR);
+        %(AdditionalLibraryDirectories)
+      </AdditionalLibraryDirectories>
+      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
       <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <Driver>Driver</Driver>
+      <EntryPointSymbol>FxDriverEntry</EntryPointSymbol>
+      <SubSystem>Native</SubSystem>
     </Link>
-    <Inf>
-      <CommandLineOptions>%(CommandLineOptions)</CommandLineOptions>
-    </Inf>
     <!-- DO NOT add post-build install steps -->
   </ItemDefinitionGroup>
 
+  <!-- ── Compiler & Linker settings (Release) ─────────────────────── -->
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_AMD64_;AMD64;NT_INST;WINNT=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <KernelBaseAddress>true</KernelBaseAddress>
-      <ExceptionHandling>
-      </ExceptionHandling>
+      <ExceptionHandling></ExceptionHandling>
+      <ProgramDataBaseFileName>$(IntDir)$(TargetName).pdb</ProgramDataBaseFileName>
+      <ObjectFileName>$(IntDir)%(FileName).obj</ObjectFileName>
+      <CallingConvention>StdCall</CallingConvention>
+      <CompileAs>CompileAsC</CompileAs>
+      <AdditionalOptions>/utf-8 /GF %(AdditionalOptions)</AdditionalOptions>
+      <DisableSpecificWarnings>4324;4100;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>
+        $(WDKContentRoot)Include\$(WDKBuildFolder)\km;
+        $(WDKContentRoot)Include\$(WDKBuildFolder)\shared;
+        $(WDKContentRoot)Include\wdf\kmdf\$(KMDF_VERSION_MAJOR).$(KMDF_VERSION_MINOR);
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>%(AdditionalDependencies);wdmsec.lib;wdfldr.lib</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(TargetName).sys</OutputFile>
+      <AdditionalDependencies>ntoskrnl.lib;hal.lib;wmilib.lib;wdmsec.lib;wdfldr.lib;wdfdriverentry.lib;$(KernelBufferOverflowLib)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>
+        $(WDKContentRoot)Lib\$(WDKBuildFolder)\km\x64;
+        $(WDKContentRoot)Lib\wdf\kmdf\x64\$(KMDF_VERSION_MAJOR).$(KMDF_VERSION_MINOR);
+        %(AdditionalLibraryDirectories)
+      </AdditionalLibraryDirectories>
+      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+      <Driver>Driver</Driver>
+      <EntryPointSymbol>FxDriverEntry</EntryPointSymbol>
+      <SubSystem>Native</SubSystem>
     </Link>
     <!-- DO NOT add post-build install steps -->
   </ItemDefinitionGroup>
 
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <!-- ── MSBuild C++ targets ───────────────────────────────────────── -->
+  <!-- This import MUST come after ItemDefinitionGroup for driver builds. -->
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 
+  <!-- ── Source files ──────────────────────────────────────────────── -->
   <ItemGroup>
     <ClCompile Include="Driver.c" />
     <ClCompile Include="Device.c" />
@@ -121,5 +203,4 @@
     DO NOT add an Inf item here.
   -->
 
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
