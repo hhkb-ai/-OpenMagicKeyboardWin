@@ -108,7 +108,7 @@ A2450FilterEvtDeviceAdd(
     /* Create default queue for internal device control (HID IOCTLs) */
     WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(
         &queueConfig,
-        WdfIoQueueDispatchParallel
+        WdfIoQueueDispatchSequential
     );
 
     queueConfig.EvtIoInternalDeviceControl = A2450FilterEvtIoInternalDeviceControl;

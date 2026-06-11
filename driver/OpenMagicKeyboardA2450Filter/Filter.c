@@ -49,6 +49,7 @@ A2450FilterEvtIoInternalDeviceControl(
     PA2450_DEVICE_CONTEXT ctx;
     NTSTATUS status;
     BOOLEAN sent;
+    WDF_REQUEST_SEND_OPTIONS options;
 
     UNREFERENCED_PARAMETER(OutputBufferLength);
     UNREFERENCED_PARAMETER(InputBufferLength);
@@ -81,14 +82,21 @@ A2450FilterEvtIoInternalDeviceControl(
     }
 
     /*
-     * Non-READ_REPORT IOCTLs: forward directly, no completion routine.
+     * Non-READ_REPORT IOCTLs: fire-and-forget, no completion routine.
+     * Use SEND_AND_FORGET so the framework does not expect us to
+     * reclaim the request on a completion path we do not own.
      */
     WdfRequestFormatRequestUsingCurrentType(Request);
+
+    WDF_REQUEST_SEND_OPTIONS_INIT(
+        &options,
+        WDF_REQUEST_SEND_OPTION_SEND_AND_FORGET
+    );
 
     sent = WdfRequestSend(
         Request,
         ctx->IoTarget,
-        WDF_NO_SEND_OPTIONS
+        &options
     );
 
     if (!sent)
@@ -118,6 +126,7 @@ A2450FilterReadReportCompletion(
     WDFMEMORY memory = NULL;
     PVOID buffer = NULL;
     size_t length = 0;
+    size_t bytesReturned;
     NTSTATUS status;
 
     UNREFERENCED_PARAMETER(Target);
@@ -125,7 +134,29 @@ A2450FilterReadReportCompletion(
     if (!NT_SUCCESS(Params->IoStatus.Status))
     {
         /* Lower driver failed — pass through the failure as-is. */
-        WdfRequestComplete(Request, Params->IoStatus.Status);
+        WdfRequestCompleteWithInformation(
+            Request,
+            Params->IoStatus.Status,
+            Params->IoStatus.Information
+        );
+        return;
+    }
+
+    /*
+     * Check bytes returned by the lower driver.
+     * A valid A2450 keyboard report is exactly 10 bytes.
+     * If the lower driver returned fewer bytes, pass through unchanged.
+     */
+    bytesReturned = (size_t)Params->IoStatus.Information;
+
+    if (bytesReturned < A2450_REPORT_LENGTH)
+    {
+        ctx->ReportsPassedThrough++;
+        WdfRequestCompleteWithInformation(
+            Request,
+            Params->IoStatus.Status,
+            Params->IoStatus.Information
+        );
         return;
     }
 
@@ -135,7 +166,11 @@ A2450FilterReadReportCompletion(
     {
         /* Cannot get output buffer — pass through unchanged. */
         ctx->ReportsPassedThrough++;
-        WdfRequestComplete(Request, Params->IoStatus.Status);
+        WdfRequestCompleteWithInformation(
+            Request,
+            Params->IoStatus.Status,
+            Params->IoStatus.Information
+        );
         return;
     }
 
@@ -145,7 +180,11 @@ A2450FilterReadReportCompletion(
     {
         /* Not a keyboard report or null buffer — pass through. */
         ctx->ReportsPassedThrough++;
-        WdfRequestComplete(Request, Params->IoStatus.Status);
+        WdfRequestCompleteWithInformation(
+            Request,
+            Params->IoStatus.Status,
+            Params->IoStatus.Information
+        );
         return;
     }
 
@@ -163,5 +202,9 @@ A2450FilterReadReportCompletion(
         ctx->ReportsPassedThrough++;
     }
 
-    WdfRequestComplete(Request, Params->IoStatus.Status);
+    WdfRequestCompleteWithInformation(
+        Request,
+        Params->IoStatus.Status,
+        Params->IoStatus.Information
+    );
 }
