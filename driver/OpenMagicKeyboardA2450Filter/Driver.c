@@ -1,39 +1,31 @@
 /*
  * Driver.c — KMDF driver entry point for A2450 HID Filter Driver.
  *
- * This is a design skeleton only.
- * Do not install.
- * Do not bind to real hardware yet.
- * Do not run on production machines.
+ * Design / build skeleton only.
+ * Do not install.  Do not bind to real hardware.
  *
  * Driver model: HIDClass lower filter driver
  * Framework: KMDF
  * Target device: Apple Magic Keyboard A2450 (VID_05AC & PID_029C)
  *
- * The filter sits between hidusb.sys and kbdhid.sys in the driver stack:
- *
+ * Driver stack position:
  *   kbdhid.sys (HID keyboard miniport)
- *       ↓
- *   [OpenMagicKeyboardA2450Filter.sys]  ← this driver
- *       ↓
+ *       |
+ *   [OpenMagicKeyboardA2450Filter.sys]  <- this driver
+ *       |
  *   hidusb.sys (HID USB miniport)
- *       ↓
- *   USB endpoint 0x82 (Interrupt IN)
- *
- * This allows us to:
- *   1. Read the raw 10-byte HID report (including Byte 9 / Apple Fn state)
- *   2. Modify the report before kbdhid.sys processes it
- *   3. Only bind to A2450 devices (by hardware ID matching)
  */
 
 #include <ntddk.h>
 #include <wdf.h>
+#include "Device.h"
 #include "ReportTransform.h"
 #include "A2450Report.h"
 
 /* Forward declarations */
 DRIVER_INITIALIZE DriverEntry;
 EVT_WDF_DRIVER_DEVICE_ADD A2450FilterEvtDeviceAdd;
+EVT_WDF_IO_QUEUE_IO_INTERNAL_DEVICE_CONTROL A2450FilterEvtIoInternalDeviceControl;
 
 /*
  * DriverEntry — called when the driver is loaded.
@@ -47,7 +39,7 @@ DriverEntry(
     WDF_DRIVER_CONFIG config;
     NTSTATUS status;
 
-    KdPrint(("OpenMagicKeyboardA2450Filter: DriverEntry\n"));
+    KdPrint(("OpenMagicKeyboard: DriverEntry\n"));
 
     WDF_DRIVER_CONFIG_INIT(&config, A2450FilterEvtDeviceAdd);
 
@@ -56,12 +48,12 @@ DriverEntry(
         RegistryPath,
         WDF_NO_OBJECT_ATTRIBUTES,
         &config,
-        WDF_NO_HANDLE  /* DriverObject handle, not needed */
+        WDF_NO_HANDLE
     );
 
     if (!NT_SUCCESS(status))
     {
-        KdPrint(("OpenMagicKeyboardA2450Filter: WdfDriverCreate failed: 0x%08X\n", status));
+        KdPrint(("OpenMagicKeyboard: WdfDriverCreate failed 0x%08X\n", status));
     }
 
     return status;
@@ -70,10 +62,11 @@ DriverEntry(
 /*
  * A2450FilterEvtDeviceAdd — called when PnP manager discovers a matching device.
  *
- * The INF file specifies which hardware IDs this driver binds to.
- * For A2450: HID\VID_05AC&PID_029C
- *
- * TODO: Create device object, set up filter I/O callbacks.
+ * As a HID lower filter:
+ *   1. Mark ourselves as a filter driver
+ *   2. Create the device object
+ *   3. Get the default I/O target (next-lower driver)
+ *   4. Create a default queue with EvtIoInternalDeviceControl
  */
 NTSTATUS
 A2450FilterEvtDeviceAdd(
@@ -81,19 +74,59 @@ A2450FilterEvtDeviceAdd(
     _Inout_ PWDFDEVICE_INIT DeviceInit
 )
 {
+    NTSTATUS status;
+    WDFDEVICE device;
+    WDF_OBJECT_ATTRIBUTES deviceAttributes;
+    WDF_IO_QUEUE_CONFIG queueConfig;
+    PA2450_DEVICE_CONTEXT ctx;
+
     UNREFERENCED_PARAMETER(Driver);
 
-    KdPrint(("OpenMagicKeyboardA2450Filter: DeviceAdd\n"));
+    KdPrint(("OpenMagicKeyboard: DeviceAdd\n"));
 
-    /*
-     * As a HID lower filter, we need to:
-     *   1. Set ourselves as a filter (not a function driver)
-     *   2. Forward IRPs we don't care about to the next driver
-     *   3. Intercept IOCTL_HID_READ_REPORT to transform incoming reports
-     *
-     * TODO: Implement device creation and I/O queue setup.
-     * See Device.c for the planned implementation.
-     */
+    /* Mark as filter driver — must be called before WdfDeviceCreate */
+    WdfFdoInitSetFilter(DeviceInit);
+
+    /* Create device object with context */
+    WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&deviceAttributes, A2450_DEVICE_CONTEXT);
+
+    status = WdfDeviceCreate(&DeviceInit, &deviceAttributes, &device);
+    if (!NT_SUCCESS(status))
+    {
+        KdPrint(("OpenMagicKeyboard: WdfDeviceCreate failed 0x%08X\n", status));
+        return status;
+    }
+
+    /* Initialize device context */
+    ctx = A2450GetDeviceContext(device);
+    ctx->Device = device;
+    ctx->IoTarget = WdfDeviceGetIoTarget(device);
+    A2450TransformStateInit(&ctx->TransformState);
+    ctx->ReportsTransformed = 0;
+    ctx->ReportsPassedThrough = 0;
+
+    /* Create default queue for internal device control (HID IOCTLs) */
+    WDF_IO_QUEUE_CONFIG_INIT_DEFAULT_QUEUE(
+        &queueConfig,
+        WdfIoQueueDispatchParallel
+    );
+
+    queueConfig.EvtIoInternalDeviceControl = A2450FilterEvtIoInternalDeviceControl;
+
+    status = WdfIoQueueCreate(
+        device,
+        &queueConfig,
+        WDF_NO_OBJECT_ATTRIBUTES,
+        WDF_NO_HANDLE
+    );
+
+    if (!NT_SUCCESS(status))
+    {
+        KdPrint(("OpenMagicKeyboard: WdfIoQueueCreate failed 0x%08X\n", status));
+        return status;
+    }
+
+    KdPrint(("OpenMagicKeyboard: DeviceAdd success, IoTarget=%p\n", ctx->IoTarget));
 
     return STATUS_SUCCESS;
 }

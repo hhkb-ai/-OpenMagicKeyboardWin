@@ -4,7 +4,7 @@ Apple Magic Keyboard A2450 的 HID Filter Driver。
 
 ## 当前状态
 
-**MVP-A .sys 已生成**。WDK 编译通过（Debug + Release，0 警告 0 错误），产物为未签名 .sys。**不可安装，不可绑定真实设备。**
+**MVP-A 最小 HID 拦截已实现**。Filter.c 包含真实的 `EvtIoInternalDeviceControl` 和 completion routine，拦截 `IOCTL_HID_READ_REPORT` 并在 completion 中调用 `A2450TransformKeyboardReport` 原地修改报告。WDK 编译通过（Debug + Release，0 警告 0 错误），产物为未签名 .sys。**不可安装，不可绑定真实设备。**
 
 ## HID Collection 总览（真实设备验证）
 
@@ -35,9 +35,10 @@ Apple Magic Keyboard A2450 的 HID Filter Driver。
 | `A2450Report.h` | HID Report 结构定义和常量 |
 | `ReportTransform.h` | 转换函数接口和状态结构 |
 | `ReportTransform.c` | 核心转换逻辑实现 |
-| `Driver.c` | KMDF DriverEntry 和 DeviceAdd |
-| `Device.c` | 设备上下文和初始化 |
-| `Filter.c` | HID IOCTL 拦截设计（伪代码） |
+| `Driver.c` | KMDF DriverEntry 和 DeviceAdd（真实实现） |
+| `Device.c` | 设备上下文定义 |
+| `Device.h` | 设备上下文结构和访问宏 |
+| `Filter.c` | HID IOCTL 拦截（EvtIoInternalDeviceControl + completion routine） |
 | `FnCtrlStateMachine.md` | 状态机设计、伪代码、边界情况、测试用例 |
 | `OpenMagicKeyboardA2450Filter.inf.template` | INF 设计模板（不可安装） |
 | `OpenMagicKeyboardA2450Filter.vcxproj` | WDK/KMDF 编译项目 |

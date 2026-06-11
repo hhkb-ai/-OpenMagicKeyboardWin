@@ -2,9 +2,9 @@
 
 ## Current Stage
 
-**.sys generated (unsigned). No installation.**
+**Minimal HID read report interception implemented (unsigned .sys, not installed).**
 
-The driver compiles successfully with WDK 10.0.26100. The `.sys` file is a build artifact — it is NOT meant to be loaded on any system.
+The driver compiles successfully with WDK 10.0.26100. Filter.c now contains a real `EvtIoInternalDeviceControl` callback that intercepts `IOCTL_HID_READ_REPORT` and applies A2450 keyboard report transformation in a completion routine. The `.sys` file is a build artifact — it is NOT meant to be loaded on any system.
 
 ## Build Is Not Installation
 
@@ -68,17 +68,17 @@ C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v17
 
 See the Toolset.props and Toolset.targets files in the project's `driver/platform-toolset/` directory for the content.
 
-### Build Result (2026-06-10)
+### Build Result (2026-06-11)
 
 ```text
 已成功生成。
     0 个警告
     0 个错误
-    已用时间 00:00:01.13
 ```
 
-- Debug x64: `bin\Debug\x64\OpenMagicKeyboardA2450Filter.sys` (10 KB)
-- Release x64: `bin\Release\x64\OpenMagicKeyboardA2450Filter.sys` (9 KB)
+- Debug x64: `bin\Debug\x64\OpenMagicKeyboardA2450Filter.sys` (11 KB)
+- Release x64: `bin\Release\x64\OpenMagicKeyboardA2450Filter.sys` (11 KB)
+- .NET tests: 37/37 passed
 
 ## Future Test Requirements
 

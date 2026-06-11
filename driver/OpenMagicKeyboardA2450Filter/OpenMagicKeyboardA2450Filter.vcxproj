@@ -194,6 +194,7 @@
 
   <ItemGroup>
     <ClInclude Include="A2450Report.h" />
+    <ClInclude Include="Device.h" />
     <ClInclude Include="ReportTransform.h" />
   </ItemGroup>
 

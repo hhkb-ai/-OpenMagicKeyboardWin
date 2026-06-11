@@ -1,160 +1,167 @@
 /*
  * Filter.c — HID report interception and transformation.
  *
- * DESIGN / BUILD SKELETON ONLY.
- * Do not install.
- * Do not bind to real hardware.
- * Do not run on production machines.
+ * Design / build skeleton only.
+ * Do not install.  Do not bind to real hardware.
  *
- * This file contains the core filter logic that intercepts HID reports
- * from the keyboard and applies Fn/Ctrl swap transformations.
+ * This file implements the core filter logic that intercepts
+ * IOCTL_HID_READ_REPORT and transforms A2450 keyboard reports
+ * in the completion routine.
  *
- * HID filter driver I/O model:
- * ============================
- *
- * Kernel-mode HID clients typically use internal device control paths.
- * This scaffold assumes EvtIoInternalDeviceControl / IOCTL_HID_READ_REPORT
- * interception, but the exact queue routing must be verified during WDK
- * build and driver stack testing.
- *
- * The intended flow (completion routine model):
- *
- *   1. Upper HID class driver sends IOCTL_HID_READ_REPORT
- *   2. Our filter intercepts this IOCTL
- *   3. We forward it down to the lower driver
- *   4. When the lower driver completes the IRP with raw data, our
- *      completion routine fires
- *   5. In the completion routine, we transform the report in-place
- *   6. We complete the IRP back to the upper driver with the modified report
- *
- * TODO: The exact IOCTL routing (EvtIoInternalDeviceControl vs other
- * mechanisms) must be verified during WDK build. Do not assume a
- * specific path without testing.
+ * IRQL / concurrency notes:
+ *   - Completion routine may run at IRQL <= DISPATCH_LEVEL.
+ *   - A2450TransformKeyboardReport only does byte manipulation,
+ *     no memory allocation, no blocking — safe at any IRQL.
+ *   - No spinlock added in this phase.
+ *   - TransformState currently holds per-report computation state
+ *     and configuration switches only.
+ *   - If cross-report state is introduced later, concurrency
+ *     protection must be re-evaluated.
  */
 
 #include <ntddk.h>
 #include <wdf.h>
+#include <hidport.h>
+#include "Device.h"
 #include "ReportTransform.h"
 #include "A2450Report.h"
 
-/*
- * Forward declarations for IRP-based filter callbacks.
- *
- * In a KMDF filter, we can use WdfFdoInitSetFilter() to mark
- * ourselves as a filter driver, then use an EvtIoInternalDeviceControl
- * callback to intercept HID IOCTLs.
- *
- * NOTE: The exact routing mechanism must be verified during WDK build.
- */
+/* Forward declarations */
+EVT_WDF_REQUEST_COMPLETION_ROUTINE A2450FilterReadReportCompletion;
 
 /*
  * A2450FilterEvtIoInternalDeviceControl — intercepts HID IOCTLs.
  *
- * This is the main entry point for HID report interception.
- * The HID class driver sends IOCTL_HID_READ_REPORT to read reports.
+ * For IOCTL_HID_READ_REPORT: set completion routine and forward.
+ * For all other IOCTLs: forward directly without completion routine.
  *
- * Implementation plan:
- *
- *   case IOCTL_HID_READ_REPORT:
- *       1. Set a completion routine on the IRP
- *       2. Forward the IRP to the next lower driver (hidusb.sys)
- *       3. In the completion routine:
- *          a. Check if the report is an A2450 keyboard report (10 bytes, ID 0x01)
- *          b. If yes, apply A2450TransformKeyboardReport() in-place
- *          c. Complete the IRP
- *
- * TODO: Implement when WDK is available.
- *
- * Pseudocode:
- *
- * VOID
- * A2450FilterEvtIoInternalDeviceControl(
- *     WDFQUEUE Queue,
- *     WDFREQUEST Request,
- *     size_t OutputBufferLength,
- *     size_t InputBufferLength,
- *     ULONG IoControlCode
- * )
- * {
- *     PA2450_DEVICE_CONTEXT ctx = A2450GetDeviceContext(
- *         WdfIoQueueGetDevice(Queue));
- *
- *     switch (IoControlCode)
- *     {
- *     case IOCTL_HID_READ_REPORT:
- *         // Set completion routine and forward
- *         // In completion: transform report
- *         break;
- *
- *     case IOCTL_HID_GET_REPORT:
- *     case IOCTL_HID_SET_REPORT:
- *     case IOCTL_HID_GET_FEATURE:
- *     case IOCTL_HID_SET_FEATURE:
- *         // Pass through without modification
- *         break;
- *
- *     default:
- *         // Forward all other IOCTLs
- *         break;
- *     }
- *
- *     // Forward to next driver
- *     WdfRequestForwardToIoTarget(Request, ctx->IoTarget, ...);
- * }
- *
- * Completion routine pseudocode:
- *
- * NTSTATUS
- * A2450FilterReadReportCompletion(
- *     WDFREQUEST Request,
- *     WDFIOTARGET Target,
- *     PWDF_REQUEST_COMPLETION_PARAMS Params,
- *     WDFCONTEXT Context
- * )
- * {
- *     PA2450_DEVICE_CONTEXT ctx = (PA2450_DEVICE_CONTEXT)Context;
- *
- *     if (NT_SUCCESS(Params->IoStatus.Status))
- *     {
- *         PVOID reportBuffer;
- *         size_t reportLength;
- *
- *         // Get the report buffer from the request
- *         // WdfRequestRetrieveOutputMemory(Request, &memory);
- *         // reportBuffer = WdfMemoryGetBuffer(memory, &reportLength);
- *
- *         if (A2450IsKeyboardReport(reportBuffer, reportLength))
- *         {
- *             BOOLEAN modified = A2450TransformKeyboardReport(
- *                 reportBuffer, reportLength, &ctx->TransformState);
- *
- *             if (modified)
- *             {
- *                 ctx->ReportsTransformed++;
- *             }
- *             else
- *             {
- *                 ctx->ReportsPassedThrough++;
- *             }
- *         }
- *     }
- *
- *     WdfRequestComplete(Request, Params->IoStatus.Status);
- * }
- *
- * IMPORTANT NOTES:
- *
- * 1. IOCTL_HID_READ_REPORT uses METHOD_NEITHER, so the output buffer
- *    is the original user-mode buffer (not copied). We can modify it
- *    in-place in the completion routine.
- *
- * 2. The completion routine runs at IRQL <= DISPATCH_LEVEL.
- *    A2450TransformKeyboardReport only does simple byte manipulation,
- *    so it's safe at any IRQL.
- *
- * 3. We must NOT complete the request ourselves when forwarding;
- *    the completion routine handles that.
- *
- * 4. If the device is not an A2450 (e.g., wrong VID/PID), we should
- *    pass all reports through without transformation.
+ * Any failure in format/send is completed back to the caller immediately.
  */
+VOID
+A2450FilterEvtIoInternalDeviceControl(
+    _In_ WDFQUEUE Queue,
+    _In_ WDFREQUEST Request,
+    _In_ size_t OutputBufferLength,
+    _In_ size_t InputBufferLength,
+    _In_ ULONG IoControlCode
+)
+{
+    PA2450_DEVICE_CONTEXT ctx;
+    NTSTATUS status;
+    BOOLEAN sent;
+
+    UNREFERENCED_PARAMETER(OutputBufferLength);
+    UNREFERENCED_PARAMETER(InputBufferLength);
+
+    ctx = A2450GetDeviceContext(WdfIoQueueGetDevice(Queue));
+
+    if (IoControlCode == IOCTL_HID_READ_REPORT)
+    {
+        WdfRequestFormatRequestUsingCurrentType(Request);
+
+        WdfRequestSetCompletionRoutine(
+            Request,
+            A2450FilterReadReportCompletion,
+            (WDFCONTEXT)ctx
+        );
+
+        sent = WdfRequestSend(
+            Request,
+            ctx->IoTarget,
+            WDF_NO_SEND_OPTIONS
+        );
+
+        if (!sent)
+        {
+            status = WdfRequestGetStatus(Request);
+            WdfRequestComplete(Request, status);
+        }
+
+        return;
+    }
+
+    /*
+     * Non-READ_REPORT IOCTLs: forward directly, no completion routine.
+     */
+    WdfRequestFormatRequestUsingCurrentType(Request);
+
+    sent = WdfRequestSend(
+        Request,
+        ctx->IoTarget,
+        WDF_NO_SEND_OPTIONS
+    );
+
+    if (!sent)
+    {
+        status = WdfRequestGetStatus(Request);
+        WdfRequestComplete(Request, status);
+    }
+}
+
+/*
+ * A2450FilterReadReportCompletion — called when the lower driver completes
+ * an IOCTL_HID_READ_REPORT request.
+ *
+ * If the report is a 10-byte A2450 keyboard report (ID 0x01),
+ * apply A2450TransformKeyboardReport in-place.
+ * On any failure, pass the report through unmodified.
+ */
+VOID
+A2450FilterReadReportCompletion(
+    _In_ WDFREQUEST Request,
+    _In_ WDFIOTARGET Target,
+    _In_ PWDF_REQUEST_COMPLETION_PARAMS Params,
+    _In_ WDFCONTEXT Context
+)
+{
+    PA2450_DEVICE_CONTEXT ctx = (PA2450_DEVICE_CONTEXT)Context;
+    WDFMEMORY memory = NULL;
+    PVOID buffer = NULL;
+    size_t length = 0;
+    NTSTATUS status;
+
+    UNREFERENCED_PARAMETER(Target);
+
+    if (!NT_SUCCESS(Params->IoStatus.Status))
+    {
+        /* Lower driver failed — pass through the failure as-is. */
+        WdfRequestComplete(Request, Params->IoStatus.Status);
+        return;
+    }
+
+    status = WdfRequestRetrieveOutputMemory(Request, &memory);
+
+    if (!NT_SUCCESS(status))
+    {
+        /* Cannot get output buffer — pass through unchanged. */
+        ctx->ReportsPassedThrough++;
+        WdfRequestComplete(Request, Params->IoStatus.Status);
+        return;
+    }
+
+    buffer = WdfMemoryGetBuffer(memory, &length);
+
+    if (buffer == NULL || !A2450IsKeyboardReport((const UCHAR*)buffer, length))
+    {
+        /* Not a keyboard report or null buffer — pass through. */
+        ctx->ReportsPassedThrough++;
+        WdfRequestComplete(Request, Params->IoStatus.Status);
+        return;
+    }
+
+    /*
+     * Transform the 10-byte A2450 keyboard report in-place.
+     * A2450TransformKeyboardReport validates length and report ID
+     * internally, so this is a safe double-check.
+     */
+    if (A2450TransformKeyboardReport((UCHAR*)buffer, length, &ctx->TransformState))
+    {
+        ctx->ReportsTransformed++;
+    }
+    else
+    {
+        ctx->ReportsPassedThrough++;
+    }
+
+    WdfRequestComplete(Request, Params->IoStatus.Status);
+}

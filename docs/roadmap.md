@@ -2,7 +2,7 @@
 
 ## MVP-A — Keyboard Transform (Current)
 
-**Status: .sys generated (unsigned, not installed)**
+**Status: Minimal HID interception implemented (unsigned .sys, not installed)**
 
 | Feature | Status |
 |---------|--------|
@@ -16,12 +16,13 @@
 | C# unit tests (37/37) | ✅ |
 | WDK/KMDF build scaffold | ✅ |
 | WDK build (Debug + Release) | ✅ 0 warnings, 0 errors |
-| .sys generation | ✅ Debug 10 KB, Release 9 KB |
+| .sys generation | ✅ Debug 11 KB, Release 11 KB |
+| Filter.c minimal interception | ✅ EvtIoInternalDeviceControl + completion routine |
 | INF template | ✅ (design only) |
 | C#/C parity check | ✅ |
 
 **Remaining for MVP-A completion:**
-- [ ] Code review of Filter.c completion routine
+- [ ] Static review of minimal implementation
 - [ ] Verify .sys loads in a test VM (future phase)
 
 ## MVP-B — Media Keys
@@ -75,7 +76,7 @@
 
 | Phase | Target | Notes |
 |-------|--------|-------|
-| MVP-A | Current | Build scaffold ready |
+| MVP-A | Current | Minimal interception implemented, not installed |
 | MVP-B | TBD | After MVP-A verified in VM |
 | MVP-C | TBD | After MVP-B stable |
 | MVP-D | TBD | After Bluetooth capture done |
