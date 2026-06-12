@@ -134,13 +134,14 @@ jobs:
           fi
 
           # Whitelist check: verify all changed files are in allowed files
+          # Use exact line matching to prevent substring false positives
           for FILE in $DIFF; do
             # Allow .github/ files (workflow artifacts)
             if [[ "$FILE" == .github/* ]]; then
               continue
             fi
-            # Check if file is in allowed files list
-            if ! echo "$ALLOWED_FILES" | grep -qF "$FILE"; then
+            # Check if file exactly matches a line in allowed files list
+            if ! echo "$ALLOWED_FILES" | grep -qxF "$FILE"; then
               echo "::error::File not in allowed files list: $FILE"
               exit 1
             fi
