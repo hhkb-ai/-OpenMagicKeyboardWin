@@ -38,15 +38,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # PR must have all three labels exactly, and not have notification label
+          # PR must contain all three required labels, must not have notification label
+          # Other labels are allowed
           PRS=$(gh pr list \
             --repo "$GH_REPO" \
             --state open \
             --limit 100 \
             --json number,labels \
             --jq '[.[] | select(
-              (.labels | map(.name) | sort) == (["approved-by-agent-c", "approved-by-orchestrator", "state:owner-decision"] | sort) and
-              (.labels | map(.name) | index("owner-decision-notified") == null)
+              (.labels | map(.name) | contains(["approved-by-agent-c"])) and
+              (.labels | map(.name) | contains(["approved-by-orchestrator"])) and
+              (.labels | map(.name) | contains(["state:owner-decision"])) and
+              (.labels | map(.name) | contains(["owner-decision-notified"]) | not)
             )] | .[].number')
 
           if [ -z "$PRS" ]; then
