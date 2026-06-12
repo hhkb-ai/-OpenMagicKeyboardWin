@@ -199,5 +199,5 @@ jobs:
         run: |
           ISSUE=${{ steps.check.outputs.issue_number }}
           if [ -n "$ISSUE" ]; then
-            gh issue comment $ISSUE --body "❌ Agent B FAILED at step '${{ github.current_step }}' (run ${{ github.run_id }}). Orchestrator review required."
+            gh issue comment $ISSUE --body "❌ Agent B FAILED (run ${{ github.run_id }}). Check workflow logs for details. Orchestrator review required."
           fi
