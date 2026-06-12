@@ -135,5 +135,39 @@ else
   exit 1
 fi
 
+# Test 10: Whitelist exact matching (negative case)
+echo ""
+echo "Test 10: Whitelist exact matching"
+
+# Negative case: docs/example.md should NOT match docs/example.md.bak
+ALLOWED_FILES="docs/example.md.bak"
+CHANGED_FILE="docs/example.md"
+if echo "$ALLOWED_FILES" | grep -qxF "$CHANGED_FILE"; then
+  echo "❌ FAIL: docs/example.md should not match docs/example.md.bak"
+  exit 1
+else
+  echo "✅ PASS: docs/example.md rejected when only docs/example.md.bak allowed"
+fi
+
+# Positive case: exact match should pass
+ALLOWED_FILES="docs/example.md"
+CHANGED_FILE="docs/example.md"
+if echo "$ALLOWED_FILES" | grep -qxF "$CHANGED_FILE"; then
+  echo "✅ PASS: docs/example.md accepted when docs/example.md is allowed"
+else
+  echo "❌ FAIL: docs/example.md should match docs/example.md"
+  exit 1
+fi
+
+# Negative case: substring match should fail
+ALLOWED_FILES="docs/example.md.backup"
+CHANGED_FILE="docs/example.md"
+if echo "$ALLOWED_FILES" | grep -qxF "$CHANGED_FILE"; then
+  echo "❌ FAIL: docs/example.md should not match docs/example.md.backup"
+  exit 1
+else
+  echo "✅ PASS: docs/example.md rejected when only docs/example.md.backup allowed"
+fi
+
 echo ""
 echo "=== All tests passed ==="

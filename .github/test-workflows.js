@@ -103,6 +103,44 @@ console.log("\nTest 9b: Case-insensitive safety confirmation");
 const prBodyLower = `Closes #1\n\n## Safety confirmation\n- No driver installation`;
 test("Lowercase 'Safety confirmation' accepted", /Safety Confirmation/i.test(prBodyLower));
 
+// Test 10: Whitelist exact matching (negative case)
+console.log("\nTest 10: Whitelist exact matching");
+// Simulate the whitelist check logic from agent-a.yml
+function checkWhitelist(diffFiles, allowedFiles) {
+  for (const file of diffFiles) {
+    // Allow .github/ files (workflow artifacts)
+    if (file.startsWith('.github/')) continue;
+    // Check if file exactly matches a line in allowed files list
+    // Uses grep -qxF logic: exact line match
+    const lines = allowedFiles.split('\n');
+    let found = false;
+    for (const line of lines) {
+      if (line.trim() === file) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) return { passed: false, file };
+  }
+  return { passed: true };
+}
+
+// Negative case: docs/example.md should NOT match docs/example.md.bak
+const allowedFilesBak = "docs/example.md.bak";
+const changedFileMd = "docs/example.md";
+const result1 = checkWhitelist([changedFileMd], allowedFilesBak);
+test("docs/example.md rejected when only docs/example.md.bak allowed", !result1.passed);
+
+// Positive case: exact match should pass
+const allowedFilesExact = "docs/example.md";
+const result2 = checkWhitelist([changedFileMd], allowedFilesExact);
+test("docs/example.md accepted when docs/example.md is allowed", result2.passed);
+
+// Negative case: substring match should fail
+const allowedFilesLonger = "docs/example.md.backup";
+const result3 = checkWhitelist([changedFileMd], allowedFilesLonger);
+test("docs/example.md rejected when only docs/example.md.backup allowed", !result3.passed);
+
 // Summary
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===`);
 process.exit(failed > 0 ? 1 : 0);
