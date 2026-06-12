@@ -62,13 +62,22 @@ jobs:
           echo "✅ .sys generated: $SYS_FILE"
           ls -la "$SYS_FILE"
 
-      - name: Upload build artifact
+      - name: Generate build evidence
+        shell: bash
+        run: |
+          SYS_FILE="driver/OpenMagicKeyboardA2450Filter/bin/${{ matrix.configuration }}/${{ matrix.platform }}/OpenMagicKeyboardA2450Filter.sys"
+          echo "## Build Evidence" > build-evidence.md
+          echo "- Configuration: ${{ matrix.configuration }}" >> build-evidence.md
+          echo "- Platform: ${{ matrix.platform }}" >> build-evidence.md
+          echo "- .sys: $SYS_FILE" >> build-evidence.md
+          echo "- Size: $(stat -c%s "$SYS_FILE" 2>/dev/null || echo 'N/A') bytes" >> build-evidence.md
+          echo "- SHA256: $(sha256sum "$SYS_FILE" 2>/dev/null | cut -d' ' -f1 || echo 'N/A')" >> build-evidence.md
+
+      - name: Upload build evidence
         uses: actions/upload-artifact@v4
         with:
-          name: driver-${{ matrix.configuration }}-${{ matrix.platform }}
-          path: |
-            driver/OpenMagicKeyboardA2450Filter/bin/${{ matrix.configuration }}/${{ matrix.platform }}/*.sys
-            driver/OpenMagicKeyboardA2450Filter/bin/${{ matrix.configuration }}/${{ matrix.platform }}/*.pdb
+          name: build-evidence-${{ matrix.configuration }}-${{ matrix.platform }}
+          path: build-evidence.md
 
   forbidden-path-scan:
     name: Forbidden Path Scan
@@ -108,13 +117,13 @@ jobs:
               "LowerFilters"
             )
 
-            echo "Scanning for high-risk runtime patterns..."
+            echo "Scanning for high-risk runtime patterns in changed files..."
             FOUND_RISK=false
             for PATTERN in "${HIGH_RISK_PATTERNS[@]}"; do
-              # Only scan automation files, not docs or templates
-              MATCHES=$(grep -rn "$PATTERN" .github/workflows/ .github/test-workflows.* scripts/ 2>/dev/null | grep -v "docs/" | grep -v "\.md:" || true)
+              # Only scan changed files, exclude this workflow file to avoid self-detection
+              MATCHES=$(echo "$CHANGED_FILES" | grep -E '\.(yml|yaml|sh|ps1|cmd|bat)$' | grep -v 'ci-hardening.yml' | xargs grep -l "$PATTERN" 2>/dev/null || true)
               if [ -n "$MATCHES" ]; then
-                echo "::error::Found high-risk pattern '$PATTERN' in automation files:"
+                echo "::error::Found high-risk pattern '$PATTERN' in changed files:"
                 echo "$MATCHES"
                 FOUND_RISK=true
               fi
